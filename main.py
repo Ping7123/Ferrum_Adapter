@@ -76,7 +76,7 @@ except:
 
 
 def web(): # запускаем веб сервак чтобы творить дичь по удаленке
-    app.run(debug=True, use_reloader=False, host='0.0.0.0', port=5601)
+    app.run(use_reloader=False, host='0.0.0.0', port=5601)
 threading.Thread(target=web).start()
 
 
