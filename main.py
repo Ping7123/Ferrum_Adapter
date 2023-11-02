@@ -19,6 +19,7 @@ import aiofiles.os
 import magic
 from PIL import Image
 
+
 signature="ERROR_CouldNotLoadModule"
 r = sr.Recognizer()
 globalfreeze=True
@@ -30,19 +31,28 @@ leavelist=[]
 #botrtag = "m.notice" # серое
 botrtag = "m.text" # не серое сообщение
 
-# перенести эти чертовы данные в отдельный файл
-debugroom="!zRliRLEQakeDuLIhCE:advancedsoft.mooo.com" # Комната куда бот будет швырять наши ошибки.
-user_id = "@your_account:advancedsoft.mooo.com"  #свои данные тут
-pw = "your_password" #свои данные тут
+experimentalenabled=True #Включить экспериментальные функции
 
+
+#Настройка для запуска тут
+with open("settings.txt", "r") as configfile:
+    configstr=configfile.readline()
+    configstr=configstr.split("%")
+
+    keysstore=configstr[2].split("/") #Токены разделеные /
+    user_id=configstr[0] # ID юзера формата @NickOfBot:server.com
+    pw=configstr[1] # Пароль
+    debugroom=configstr[3] #Отправлять сообщ об ошибке сюда
+
+#Формат файла: В одной строке пишем параметры, пример ниже:
+# @NickOfBot:server.com%accountpassword%httptoken1/httptoken2/httptoken3%!debugroomidEQakeDuLIhCE:server.com
 
 sdtest = False
 shutdcommand=False
-device_name = "FerrumAdapter_1.991"
+device_name = "FerrumAdapter_1.992"
 
 
 transcriptcolor="#16E2F5" # Цвет транскрипции (Наркоманский)
-keysstore=[] # ["МЕНА ТОКЕН ТУТА, ФИГАНИ ЗДОРОВЫЙ ХЭШ"]
 
 #Раз в сколько ждать отсутствие активности чтобы стереть все сообщения
 delcounter=360
@@ -54,6 +64,7 @@ maintenancedelay=20
 sdip="10.0.1.11"
 sdport="7860"
 sdcolor="#680071" # цвет сообщения о генерации
+limitsd=3 #Ограничение stable diffusion множителя разрешения (limitsd-1 = множитель разрешения)
 
 
 #Загрузить сервисные сообщения в память, те сообщенияф которые надо нахрен удалить
@@ -391,11 +402,14 @@ async def audiocallback(room: MatrixRoom, event: RoomMessageMedia) -> None:
             print("Ошибка транскрипции") # ебучие картинки не обрабатывать!
 
 
-async def shutdown():
-    #TODO
-    print("Saving data and exiting")
+async def checkpoint():
+    #Обновить файл где хранятся данные сообщений который планируем удалить.
     with open("servicemessages.json", "w") as file:
         json.dump(servicemessages, file)
+async def shutdown():
+    # Дописать
+    print("Saving data and exiting")
+    await checkpoint()
     quit()
 
 
@@ -572,10 +586,40 @@ async def main() -> None:
             await client.sync_forever(timeout=30000, full_state=True)
 
 
+async def experimentalcommandexec(message,userid,roomid=None):
+    global limitsd
+    global counter
+    if experimentalenabled:
+        try:
+            message=message.split()
+            while len(message) < 6: message.append(" ")
+            print(message)
+            print(message)
+            if message[0]=="!ex":
+                if message[1]=="sdres3":
+                    if message[2]==0:
+                        limitsd=3
+                        await sendmessage("[EX] sdlimit вкл", roomid, color="#00FF64")
+                    else:
+                        limitsd=4
+                        await sendmessage("[EX] sdlimit отключен (ОСТОРОЖНО)", roomid, color="#00FF64")
+                elif message[1]=="clear":
+                    counter=0
+                    await sendmessage("[EX] Выполняю очистку", roomid, warning=True, color="#00FF64") #оставляет мерзкое сообщение
+                elif message[1]=="checkpoint":
+                    await checkpoint()
+                    await sendmessage("[EX] Создаю чекпоинт сервисных данных", roomid, warning=False, color="#00FF64")
+        except:
+            await sendmessage("[EX] Сбой настройки", roomid, color="#FF0000")
+    else:
+        await sendmessage("[EX] Экспериментальный режим отключен", roomid, color="#FF0000")
+
+
 
 async def localcmdproc(message, userid, roomid=None):
     # инвалидные команды
     try:
+        await experimentalcommandexec(message,userid,roomid) # Экспериментальные команды
         global globalfreeze
         cmdresp = None
         cmdbool = False
@@ -587,7 +631,7 @@ async def localcmdproc(message, userid, roomid=None):
                 cmdbool = True
                 message=message.split(" ")
                 if len(message)>3:
-                    if message[1].isnumeric() and int(message[1]) < 4 and int(message[1]) > 0:
+                    if message[1].isnumeric() and int(message[1]) < limitsd and int(message[1]) > 0:
                         if message[2] == "realistic" or message[2]=="anime":
                             style=message[2]
                             detail=message[1]
@@ -610,27 +654,6 @@ async def localcmdproc(message, userid, roomid=None):
             elif message == "!lver":
                 cmdresp=f"Версия адаптера: {device_name}\nСигнатура файла адаптера: {signature}"
                 cmdbool=True
-
-            elif message == "!shutdown":
-                #TODO, эту штуку лучше не трогать до появления норм разграничения юзеров
-                cmdbool = False
-                print(userid)
-                if userid == "@user1:advancedsoft.mooo.com" or userid == "@user2:advancedsoft.mooo.com":
-                    await shutdown()
-                    cmdresp = f"Отключаюсь"
-                else:
-                    cmdresp = f"Нет прав для отключения"
-
-            #TODO 2 отключенных команды, на будующее
-            elif message == "!freeze":
-                cmdresp=f"Заморозка адаптера завершена"
-                #globalfreeze=True
-                cmdbool=False
-            elif message == "!unfreeze":
-                #globalfreeze=False
-                cmdresp=f"Разморозка адаптера завершена"
-                cmdbool=False
-
             elif message == "!info":
                 cmdbool = True
                 cmdresp=f"Сигнатура файла адаптера: {signature} \nСоединение SD: {sdtest}\nВерсия адаптера: {device_name}"
