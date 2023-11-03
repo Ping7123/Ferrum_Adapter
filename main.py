@@ -23,10 +23,11 @@ from PIL import Image
 signature="ERROR_CouldNotLoadModule"
 r = sr.Recognizer()
 globalfreeze=True
+httpchatenabled=False
 servicemessages=[]
 sendlist=[]
 leavelist=[]
-
+picsendlist=[]
 
 #botrtag = "m.notice" # серое
 botrtag = "m.text" # не серое сообщение
@@ -49,7 +50,7 @@ with open("settings.txt", "r") as configfile:
 
 sdtest = False
 shutdcommand=False
-device_name = "FerrumAdapter_1.992"
+device_name = "FerrumAdapter_1.993"
 
 
 transcriptcolor="#16E2F5" # Цвет транскрипции (Наркоманский)
@@ -120,7 +121,6 @@ async def send_image(client, room_id, image):
     mime_type = magic.from_file(image, mime=True)  # e.g. "image/jpeg"
     if not mime_type.startswith("image/"):
         print("INVALIDMIME")
-        return
     im = Image.open(image)
     (width, height) = im.size
     file_stat = await aiofiles.os.stat(image)
@@ -150,7 +150,6 @@ async def send_image(client, room_id, image):
         await client.room_send(room_id, message_type="m.room.message", content=content)
     except Exception:
         print("ENDPNGSENDEXCEPT")
-        pass
 
 
 
@@ -167,8 +166,10 @@ async def sdscanner():
 
 
 async def sendtask():
+    #Отправка сообщений и картинок которые запланировано отправить через http запросы /send и /send_picture
+    #todo Добавить try
     while True:
-        await asyncio.sleep(5)
+        await asyncio.sleep(2)
         while len(sendlist) > 0:
             await asyncio.sleep(1)
             item=sendlist.pop()
@@ -179,6 +180,15 @@ async def sendtask():
                 else:
                     warning=False
                 await sendmessage(item[0], item[1], warning, color=item[3])
+
+        while len(picsendlist) > 0:
+            await asyncio.sleep(1)
+            item=picsendlist.pop() #room%path
+            item=item.split("%")
+            if len(item) == 2:
+                roomid=item[0]
+                path=item[1]
+                await send_image(client, roomid, path)
 
 
 def get_file_hash(filename):
@@ -263,6 +273,40 @@ async def send_message():
                 'errcode': 'OK',
                 'status': 'Added_To_Tasker'}
             sendlist.append(f"{message}%{room_id}%{warning}%{color}")
+
+            return response_data, 200
+        else:
+            response_data = {
+                'errcode': 'Invalid_Parameters',
+                'status': 'error'}
+            return response_data, 400
+    else:
+        response_data = {
+            'errcode': 'TOKEN_INVALID'}
+        return response_data, 401
+
+
+
+
+@app.route("/send_pic")
+#TODO починить, тут нужно получать по HTTP картинку, так лучше. Пока что нужно локальный path до картинки
+#Можно добавить warning как в /send
+async def send_pic():
+    global sendlist
+    global picsendlist
+
+    #токен авторизации
+    token = request.args.get('token')
+    path = request.args.get('path')
+    room_id = request.args.get('room_id')
+
+    #Проверка кучи условий на предмет хуйни
+    if await checktoken(token):
+        if not room_id == None and not path==None:
+            response_data = {
+                'errcode': 'OK',
+                'status': 'Added_To_Tasker'}
+            picsendlist.append(f"{room_id}%{path}")
 
             return response_data, 200
         else:
@@ -426,11 +470,11 @@ async def messageprepare(question, displayusername, responseuserid, userid, resp
         if question.startswith("!"):
             servicemessages.append(f"{event.event_id}%{room.room_id}")
             #В плкйсхолдере не displayusername
-        #response = None # оключить отправку в ядро сообщения на обработку,пока что чисто костыль. След строку закоментить если вкл
-        response = await sendtocore(question, userid, room.room_id, answer, room.user_name(event.sender), event.event_id, "DISPNAME_PLACEHOLDER_RESP", responseuserid, "EventIdReplyPlaceholder")
-        if not response == None:
-            if response[:3] not in ['err', 'wrn', 'log', 'dbg']:
-                    await sendmessage(response, room.room_id,warning=False)
+        if httpchatenabled:
+            response = await sendtocore(question, userid, room.room_id, answer, room.user_name(event.sender), event.event_id, "DISPNAME_PLACEHOLDER_RESP", responseuserid, "EventIdReplyPlaceholder")
+            if not response == None:
+                if response[:3] not in ['err', 'wrn', 'log', 'dbg']:
+                        await sendmessage(response, room.room_id,warning=False)
     except Exception as err:
         await reporterror(f"Ошибка CallBack.\nВсе плохо ({err})")
 
@@ -451,7 +495,7 @@ async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
             elif len(responsebuilder)==1:
                 question = responsebuilder[0]
             else:
-                await reporterror("Неопознаный массив с ответом/вопросом")
+                await reporterror("Неопознаный массив с ответом/вопросом") #пофиксить
                 question="None"
             displayusername=room.user_name(event.sender)
 
@@ -587,14 +631,15 @@ async def main() -> None:
 
 
 async def experimentalcommandexec(message,userid,roomid=None):
+    #Экмпериментальные тестовые команды, отключите experimentalenabled!
     global limitsd
     global counter
+    global httpchatenabled
+    global experimentalenabled
     if experimentalenabled:
         try:
             message=message.split()
             while len(message) < 6: message.append(" ")
-            print(message)
-            print(message)
             if message[0]=="!ex":
                 if message[1]=="sdres3":
                     if message[2]==0:
@@ -609,6 +654,20 @@ async def experimentalcommandexec(message,userid,roomid=None):
                 elif message[1]=="checkpoint":
                     await checkpoint()
                     await sendmessage("[EX] Создаю чекпоинт сервисных данных", roomid, warning=False, color="#00FF64")
+                elif message[1]=="core":
+                    if message[2] == 0:
+                        httpchatenabled=False
+                        await sendmessage("[EX] Отключено от ядра", roomid, warning=False,
+                                          color="#00FF64")
+                    else:
+                        httpchatenabled = True
+                        await sendmessage("[EX] Подключено к ядру", roomid, warning=False,
+                                          color="#00FF64")
+                elif message[1]=="exlock":
+                    if message[2]==1:
+                        experimentalenabled=False
+                        await sendmessage("[EX] Экспериментальные функции отключены до перезапуска", roomid, warning=False,
+                                          color="#00FF64")
         except:
             await sendmessage("[EX] Сбой настройки", roomid, color="#FF0000")
     else:
