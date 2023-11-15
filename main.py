@@ -13,7 +13,7 @@ import threading
 import requests as requests
 import speech_recognition as sr
 from markdown import markdown
-from nio import AsyncClient, LoginResponse, MatrixRoom, RoomMessageText, InviteMemberEvent, RoomMessageMedia
+from nio import AsyncClient, LoginResponse, MatrixRoom, RoomMessageText, InviteMemberEvent, RoomMessageMedia, AsyncClientConfig
 import soundfile as sf
 import aiofiles.os
 import magic
@@ -22,7 +22,7 @@ from PIL import Image
 
 signature="ERROR_CouldNotLoadModule"
 r = sr.Recognizer()
-globalfreeze=True
+globalfreeze=False #Удалить
 httpchatenabled=False
 servicemessages=[]
 sendlist=[]
@@ -388,11 +388,11 @@ async def autodelete():
 
 
 
-async def launchtimer():
+async def launchtimer(): #УДАЛИТЬ
     # .synched() или типо того
     global globalfreeze
-    print("120 сек до разморозки")
-    await asyncio.sleep(120)
+    print("1 сек до разморозки")
+    await asyncio.sleep(1)
     print("Выхожу из заморозки")
     globalfreeze=False
 
@@ -404,9 +404,7 @@ def write_details_to_disk(resp: LoginResponse, homeserver) -> None:
                 "user_id": resp.user_id,  # e.g. "@user:example.org"
                 "device_id": resp.device_id,  # device ID, 10 uppercase letters
                 "access_token": resp.access_token,  # cryptogr. access token
-            },
-            f,
-        )
+            },f,)
 
 async def reporterror(error):
     print(f"[ОТПАРВЛЕНО СООБЩЕНИЕ ОБ ОШИБКЕ] {error}")
@@ -457,6 +455,46 @@ async def shutdown():
     quit()
 
 
+async def trust_devices(self, user_id: str,device_list = None) -> None:
+       # Спиздил с доков
+        """Trusts the devices of a user.
+
+        If no device_list is provided, all of the users devices are trusted. If
+        one is provided, only the devices with IDs in that list are trusted.
+
+        Arguments:
+            user_id {str} -- the user ID whose devices should be trusted.
+
+        Keyword Arguments:
+            device_list {Optional[str]} -- The full list of device IDs to trust
+                from that user (default: {None})
+        """
+
+        print(f"{user_id}'s device store: {self.device_store[user_id]}")
+
+        # The device store contains a dictionary of device IDs and known
+        # OlmDevices for all users that share a room with us, including us.
+
+        # We can only run this after a first sync. We have to populate our
+        # device store and that requires syncing with the server.
+        for device_id, olm_device in self.device_store[user_id].items():
+            if device_list and device_id not in device_list:
+                # a list of trusted devices was provided, but this ID is not in
+                # that list. That's an issue.
+                print(
+                    f"Not trusting {device_id} as it's not in {user_id}'s pre-approved list."
+                )
+                continue
+
+            if user_id == self.user_id and device_id == self.device_id:
+                # We cannot explicitly trust the device @alice is using
+                continue
+
+            self.verify_device(olm_device)
+            print(f"Trusting {device_id} from user {user_id}")
+
+
+
 async def messageprepare(question, displayusername, responseuserid, userid, responsebuilder, room, event, client):
     try:
         if len(responsebuilder) == 3:
@@ -486,6 +524,12 @@ async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
         await client.room_read_markers(room_id=room.room_id, fully_read_event=event.event_id, read_event=event.event_id)
         #await client.room_typing(room_id=room.room_id,typing_state=True, timeout=3000) # тайпер заебал, нахуй его
         #Вытаскиваем из списков нужное для answer и question
+
+
+        #Шифрование ПОФИКСИТЬ! Дичайший костыль
+        asyncio.get_event_loop().create_task(trust_devices(client, user_id=event.sender))
+
+
         if not event.sender == user_id:
             responsebuilder=event.source['content']
             responsebuilder=responsebuilder['body']
@@ -591,7 +635,7 @@ async def main() -> None:
     #Запуск тасков
     asyncio.get_event_loop().create_task(sendtask()) #Такск отправки сообщений (http server)
     asyncio.get_event_loop().create_task(leavetask())  # Таск выхода
-    asyncio.get_event_loop().create_task(launchtimer()) #Таск Разморозки при запуске, не отключать
+    asyncio.get_event_loop().create_task(launchtimer()) #Таск Разморозки удалить нахуй
     asyncio.get_event_loop().create_task(autodelete()) # Таск автоудаления сообщений, не отключать
     asyncio.get_event_loop().create_task(sdscanner()) #SD Проверка коннекта
 
@@ -602,27 +646,38 @@ async def main() -> None:
 
 
     global client
+
+    client_config = AsyncClientConfig(
+        max_limit_exceeded=0,
+        max_timeouts=0,
+        store_sync_tokens=True,
+        encryption_enabled=True)
+
+
     if not os.path.exists("credentials.json"):
         homeserver = "https://advancedsoft.mooo.com"
         if not (homeserver.startswith("https://") or homeserver.startswith("http://")):
             homeserver = "https://" + homeserver
-        client = AsyncClient(homeserver, user_id)
+        client = AsyncClient(homeserver, user_id,config=client_config)
         resp = await client.login(pw, device_name=device_name)
         if isinstance(resp, LoginResponse):
             write_details_to_disk(resp, homeserver)
+            print("Пожулайста перезапусти меня!!")
+
         else:
             print(f'homeserver = "{homeserver}"; user = "{user_id}"')
             print(f"Failed to log in: {resp}")
-            sys.exit(1)
+            sys.exit(0)
 
     else:
         with open("credentials.json", "r") as f:
             config = json.load(f)
             client = AsyncClient(config["homeserver"])
-
             client.access_token = config["access_token"]
             client.user_id = config["user_id"]
             client.device_id = config["device_id"]
+            client.store_path="storage"
+            client.load_store()
             client.add_event_callback(message_callback, RoomMessageText)
             client.add_event_callback(invite, InviteMemberEvent)
             client.add_event_callback(audiocallback, RoomMessageMedia)
