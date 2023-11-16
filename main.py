@@ -13,7 +13,7 @@ import threading
 import requests as requests
 import speech_recognition as sr
 from markdown import markdown
-from nio import AsyncClient, LoginResponse, MatrixRoom, RoomMessageText, InviteMemberEvent, RoomMessageMedia
+from nio import AsyncClient, LoginResponse, MatrixRoom, RoomMessageText, InviteMemberEvent, RoomMessageMedia, AsyncClientConfig
 import soundfile as sf
 import aiofiles.os
 import magic
@@ -22,12 +22,12 @@ from PIL import Image
 
 signature="ERROR_CouldNotLoadModule"
 r = sr.Recognizer()
-globalfreeze=True
 httpchatenabled=False
 servicemessages=[]
 sendlist=[]
 leavelist=[]
 picsendlist=[]
+trustedlist=[]
 
 #botrtag = "m.notice" # серое
 botrtag = "m.text" # не серое сообщение
@@ -50,7 +50,7 @@ with open("settings.txt", "r") as configfile:
 
 sdtest = False
 shutdcommand=False
-device_name = "FerrumAdapter_1.993"
+device_name = "FerrumAdapter_1.994"
 
 
 transcriptcolor="#16E2F5" # Цвет транскрипции (Наркоманский)
@@ -147,7 +147,7 @@ async def send_image(client, room_id, image):
     }
 
     try:
-        await client.room_send(room_id, message_type="m.room.message", content=content)
+        await client.room_send(room_id, message_type="m.room.message", content=content, ignore_unverified_devices=True)
     except Exception:
         print("ENDPNGSENDEXCEPT")
 
@@ -241,7 +241,6 @@ async def status():
     if await checktoken(token):
         response_data = {
             'errcode': 'OK',
-            'freeze': str(globalfreeze),
             'send_lenght': len(sendlist),
             'leave_lenght': len(leavelist),
             'servicemessages_lenght': len(servicemessages)
@@ -388,13 +387,7 @@ async def autodelete():
 
 
 
-async def launchtimer():
-    # .synched() или типо того
-    global globalfreeze
-    print("120 сек до разморозки")
-    await asyncio.sleep(120)
-    print("Выхожу из заморозки")
-    globalfreeze=False
+
 
 def write_details_to_disk(resp: LoginResponse, homeserver) -> None:
     with open("credentials.json", "w") as f:
@@ -404,9 +397,7 @@ def write_details_to_disk(resp: LoginResponse, homeserver) -> None:
                 "user_id": resp.user_id,  # e.g. "@user:example.org"
                 "device_id": resp.device_id,  # device ID, 10 uppercase letters
                 "access_token": resp.access_token,  # cryptogr. access token
-            },
-            f,
-        )
+            },f,)
 
 async def reporterror(error):
     print(f"[ОТПАРВЛЕНО СООБЩЕНИЕ ОБ ОШИБКЕ] {error}")
@@ -415,6 +406,7 @@ async def reporterror(error):
 
 
 async def invite(self, room: MatrixRoom) -> None:
+    global client
     try:
        await client.join(self.machine_name)
        print(f"Вошел: {self.machine_name}")
@@ -425,7 +417,6 @@ async def invite(self, room: MatrixRoom) -> None:
 
 async def audiocallback(room: MatrixRoom, event: RoomMessageMedia) -> None:
     # Мерзкий голосок в кошерный текст
-    if not globalfreeze:
         try:
             responsev=await client.download(event.url)
 
@@ -457,6 +448,7 @@ async def shutdown():
     quit()
 
 
+
 async def messageprepare(question, displayusername, responseuserid, userid, responsebuilder, room, event, client):
     try:
         if len(responsebuilder) == 3:
@@ -481,8 +473,7 @@ async def messageprepare(question, displayusername, responseuserid, userid, resp
 
 async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
     #Код хуилы, переписать
-    global response
-    if not globalfreeze:
+        global response
         await client.room_read_markers(room_id=room.room_id, fully_read_event=event.event_id, read_event=event.event_id)
         #await client.room_typing(room_id=room.room_id,typing_state=True, timeout=3000) # тайпер заебал, нахуй его
         #Вытаскиваем из списков нужное для answer и question
@@ -516,27 +507,28 @@ async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
                 await sendmessage(cmdresp,room.room_id,False)
             else:
                 await messageprepare(question, displayusername, responseuserid, userid, responsebuilder,room,event,client)
-    else:
-        print("Адаптер заморожен, игнорирую")
 
 
 
 
 
 async def sendmessage(message, room_id, warning=True, color="#808080"):
-    global counter
-    response_s=await client.room_send(
-        room_id,
-        message_type="m.room.message",
-        content={"msgtype": botrtag, "body": message, "format": "org.matrix.custom.html", "formatted_body": markdown(f'<font color="{color}">{message}</font>', extensions=['nl2br'])})
-    if not warning:
-        response_s = str(response_s)
-        start_index = response_s.find("event_id='") + len("event_id='")
-        end_index = response_s.find("'", start_index)
-        event_id = response_s[start_index:end_index]
-        servicemessages.append(f"{event_id}%{room_id}")
-        #Ресет таймера удаления
-        counter=delcounter
+    try:
+        global counter
+        response_s=await client.room_send(
+            room_id,ignore_unverified_devices=True,
+            message_type="m.room.message",
+            content={"msgtype": botrtag, "body": message, "format": "org.matrix.custom.html", "formatted_body": markdown(f'<font color="{color}">{message}</font>', extensions=['nl2br'])})
+        if not warning:
+            response_s = str(response_s)
+            start_index = response_s.find("event_id='") + len("event_id='")
+            end_index = response_s.find("'", start_index)
+            event_id = response_s[start_index:end_index]
+            servicemessages.append(f"{event_id}%{room_id}")
+            #Ресет таймера удаления
+            counter=delcounter
+    except:
+        print(f"Ошибка отправки {room_id}")
 
 
 
@@ -591,43 +583,64 @@ async def main() -> None:
     #Запуск тасков
     asyncio.get_event_loop().create_task(sendtask()) #Такск отправки сообщений (http server)
     asyncio.get_event_loop().create_task(leavetask())  # Таск выхода
-    asyncio.get_event_loop().create_task(launchtimer()) #Таск Разморозки при запуске, не отключать
     asyncio.get_event_loop().create_task(autodelete()) # Таск автоудаления сообщений, не отключать
     asyncio.get_event_loop().create_task(sdscanner()) #SD Проверка коннекта
 
 
     #asyncio.get_event_loop().create_task(testmode()) #Таск автотеста для диагостики, бесит параша
     #asyncio.get_event_loop().create_task(maintenance()) #Таск обслуживания
-    # веб сервант, КАКОЙ ФИКУС
-
 
     global client
+    client_config = AsyncClientConfig(
+        max_limit_exceeded=0,
+        max_timeouts=0,
+        store_sync_tokens=True,
+        encryption_enabled=True)
+
+
     if not os.path.exists("credentials.json"):
         homeserver = "https://advancedsoft.mooo.com"
         if not (homeserver.startswith("https://") or homeserver.startswith("http://")):
             homeserver = "https://" + homeserver
-        client = AsyncClient(homeserver, user_id)
+        client = AsyncClient(homeserver, user_id,config=client_config)
         resp = await client.login(pw, device_name=device_name)
         if isinstance(resp, LoginResponse):
             write_details_to_disk(resp, homeserver)
+            print("Пожулайста перезапусти меня!!")
+
         else:
             print(f'homeserver = "{homeserver}"; user = "{user_id}"')
             print(f"Failed to log in: {resp}")
-            sys.exit(1)
+            sys.exit(0)
 
     else:
         with open("credentials.json", "r") as f:
             config = json.load(f)
             client = AsyncClient(config["homeserver"])
-
             client.access_token = config["access_token"]
             client.user_id = config["user_id"]
             client.device_id = config["device_id"]
-            client.add_event_callback(message_callback, RoomMessageText)
+
+
             client.add_event_callback(invite, InviteMemberEvent)
+
+
+            #print("Ожидание первой синхронизации")
+            #await client.receive_response()
+            #print("Продолжаю")
+
+            client.add_event_callback(message_callback, RoomMessageText)
             client.add_event_callback(audiocallback, RoomMessageMedia)
 
-            await client.sync_forever(timeout=30000, full_state=True)
+            client.store_path = "storage"
+            client.load_store()
+            if client.should_upload_keys:
+                print("Выгружаю ключи...")
+                await client.keys_upload()
+
+            await client.sync_forever(timeout=30000, full_state=False)
+
+
 
 
 async def experimentalcommandexec(message,userid,roomid=None):
@@ -679,7 +692,6 @@ async def localcmdproc(message, userid, roomid=None):
     # инвалидные команды
     try:
         await experimentalcommandexec(message,userid,roomid) # Экспериментальные команды
-        global globalfreeze
         cmdresp = None
         cmdbool = False
         if message.startswith("!"):
@@ -730,7 +742,6 @@ async def localcmdproc(message, userid, roomid=None):
 async def sendtocore(question, userid, roomid, answer, username, message_id, reply_user_name, reply_user_id, reply_message_id):
     #Отправка ядру на обработку соообщения и возврат ответа, если нет ядра, чек строку 412
     global response
-    global globalfreeze
     try:
         request = requests.get(f'http://127.0.0.1:5555/get_answer',
                                 params={'text': question,
@@ -753,6 +764,5 @@ async def sendtocore(question, userid, roomid, answer, username, message_id, rep
         return response
     except:
         await reporterror("Ядро ferrum недоступно по HTTP, замораживаю адаптер")
-        globalfreeze = True
         return "Ошибка ядра, извините."
 asyncio.run(main())
