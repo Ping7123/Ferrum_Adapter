@@ -50,7 +50,7 @@ with open("settings.txt", "r") as configfile:
 
 sdtest = False
 shutdcommand=False
-device_name = "FerrumAdapter_1.994"
+device_name = "FerrumAdapter_1.995"
 
 
 transcriptcolor="#16E2F5" # Цвет транскрипции (Наркоманский)
@@ -58,7 +58,7 @@ transcriptcolor="#16E2F5" # Цвет транскрипции (Наркоман�
 #Раз в сколько ждать отсутствие активности чтобы стереть все сообщения
 delcounter=360
 #Раз в сколько заниматься обслуживанием (хуйней)
-maintenancedelay=20
+maintenancedelay=10000
 
 
 #генерация картинокэ с помощью stable diffusion
@@ -545,9 +545,21 @@ async def maintenance():
     while True:
         await asyncio.sleep(maintenancedelay)
         print("Начинаю обслуживание")
-        for i in client.rooms:
-            print(i)
-            print(i.joined_count)
+
+        #Чекаем комнаты. если мы там одни, валим оттуда нахуй
+        roomlist=await client.joined_rooms()
+        roomlist=roomlist.rooms
+        for i in roomlist:
+            usercount=await client.joined_members(i)
+            usercount=len(usercount.members)
+            print(f"room:{i} count:{usercount}")
+            if usercount==1:
+                try:
+                    await client.room_leave(i)
+                    await client.room_forget(i)
+                    print(f"Комната {i} пуста, сваливаю")
+                except:
+                    await reporterror(f"Не могу выйти из комнаты {i}") #На всякий
         try:
             os.remove("voice.ogg")
         except:
@@ -588,7 +600,7 @@ async def main() -> None:
 
 
     #asyncio.get_event_loop().create_task(testmode()) #Таск автотеста для диагостики, бесит параша
-    #asyncio.get_event_loop().create_task(maintenance()) #Таск обслуживания
+    asyncio.get_event_loop().create_task(maintenance()) #Таск обслуживания
 
     global client
     client_config = AsyncClientConfig(
