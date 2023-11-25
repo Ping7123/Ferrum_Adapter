@@ -58,7 +58,7 @@ transcriptcolor="#16E2F5" # Цвет транскрипции (Наркоман�
 #Раз в сколько ждать отсутствие активности чтобы стереть все сообщения
 delcounter=360
 #Раз в сколько заниматься обслуживанием (хуйней)
-maintenancedelay=10000
+maintenancedelay=1000
 
 
 #генерация картинокэ с помощью stable diffusion
@@ -97,6 +97,7 @@ async def drawandsend(text, room, client, hd=1,style="realistic"):
             if hd == 3: await sendmessage(f"Экспериментальное разрешение. Ты ждун?", room, warning=True, color="#FF0000")
             await sendmessage(f"Пытаюсь нарисовать {text} \nДетализация: {detailtext}\nСтилистика: {style}", room, warning=True, color=sdcolor)
 
+            if style == "nsfw": modelstyle = "lazymixRealAmateur_v30b.safetensors [71e14760e2]"
             if style == "realistic": modelstyle="realisticVisionV40_v40VAE.safetensors [e9d3cedc4b]" # пока что тут 2 модели. вставляем сюда свою анимешную и реалистичную.
             if style == "anime": modelstyle = "abyssorangemix3AOM3_aom3a1b.safetensors [5493a0ec49]" # если хотите поменять на другие по смыслу пройдитесь по коду и перепишите !help и !sd команды
 
@@ -208,10 +209,14 @@ async def leavetask():
     while True:
         await asyncio.sleep(10)
         while len(leavelist) > 0:
-            await asyncio.sleep(1)
-            leave=leavelist.pop()
-            await client.room_leave(leave)
-            await client.room_forget(leave)
+            try:
+                await asyncio.sleep(1)
+                leave=leavelist.pop()
+                await client.room_leave(leave)
+                await client.room_forget(leave)
+                print("Вышел с комнаты")
+            except:
+                print("ОШИБКА ВЫХОДА С КОМНАТЫ!")
 
 
 
@@ -535,8 +540,8 @@ async def sendmessage(message, room_id, warning=True, color="#808080"):
 async def redact(event_id, room_id, reason="Автоматическое модерирование"):
     try:
         await client.room_redact(room_id=room_id, event_id=event_id, reason=reason)
-    except:
-        await reporterror("Не удалось стереть сообщение")
+    except Exception as err:
+        await reporterror(f"Не удалось стереть сообщение {err}") # Посмотреть что за хуйня получится при выводе
         pass
 
 
@@ -552,12 +557,10 @@ async def maintenance():
         for i in roomlist:
             usercount=await client.joined_members(i)
             usercount=len(usercount.members)
-            print(f"room:{i} count:{usercount}")
             if usercount==1:
                 try:
                     await client.room_leave(i)
                     await client.room_forget(i)
-                    print(f"Комната {i} пуста, сваливаю")
                 except:
                     await reporterror(f"Не могу выйти из комнаты {i}") #На всякий
         try:
@@ -708,14 +711,14 @@ async def localcmdproc(message, userid, roomid=None):
         cmdbool = False
         if message.startswith("!"):
             if message == "!lhelp":
-                cmdresp="*В разработке*\n!lver - Версия адаптера \n!sd (Детализация: от 1 до 2) (Стилистика: anime или realistic) (Запрос) - Запрос картинки с stable diffusion (BETA) только на английском. \n!info - Информация о боте-адаптере"
+                cmdresp="*В разработке*\n!lver - Версия адаптера \n!sd (Детализация: от 1 до 2) (Стилистика: anime, realistic, nsfw) (Запрос) - Запрос картинки с stable diffusion (BETA) только на английском. \n!info - Информация о боте-адаптере"
                 cmdbool=True
             elif message.startswith("!sd"):
                 cmdbool = True
                 message=message.split(" ")
                 if len(message)>3:
                     if message[1].isnumeric() and int(message[1]) < limitsd and int(message[1]) > 0:
-                        if message[2] == "realistic" or message[2]=="anime":
+                        if message[2] == "realistic" or message[2]=="anime" or message[2]=="nsfw":
                             style=message[2]
                             detail=message[1]
                             #rebuild
@@ -728,11 +731,11 @@ async def localcmdproc(message, userid, roomid=None):
                                 request += ' '
                             asyncio.get_event_loop().create_task(drawandsend(text=request, room=roomid, client=client, hd=int(detail), style=style))
                         else:
-                            cmdresp = "Кажется ты что то не так написал (Не хватает аргументов)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime или realistic) (Запрос)"
+                            cmdresp = "Кажется ты что то не так написал (Не хватает аргументов)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime, realistic nsfw) (Запрос)"
                     else:
-                        cmdresp="Кажется ты что то не так написал (Неверный уровень детализации)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime или realistic) (Запрос)"
+                        cmdresp="Кажется ты что то не так написал (Неверный уровень детализации)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime realistic nsfw) (Запрос)"
                 else:
-                    cmdresp = "Кажется ты что то не так написал (Неверный стиль)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime или realistic) (Запрос)"
+                    cmdresp = "Кажется ты что то не так написал (Неверный стиль)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime, realistic nsfw) (Запрос)"
 
             elif message == "!lver":
                 cmdresp=f"Версия адаптера: {device_name}\nСигнатура файла адаптера: {signature}"
