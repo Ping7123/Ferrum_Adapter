@@ -50,7 +50,7 @@ with open("settings.txt", "r") as configfile:
 
 sdtest = False
 shutdcommand=False
-device_name = "FerrumAdapter_1.995"
+device_name = "FerrumAdapter_1.996"
 
 
 transcriptcolor="#16E2F5" # Цвет транскрипции (Наркоманский)
