@@ -256,7 +256,7 @@ async def status():
             'errcode': 'Token_Invalid'}
         return response_data, 401
 
-@app.route("/send_message")
+@app.route("/send-message")
 async def send_message():
     global sendlist
 
@@ -292,7 +292,7 @@ async def send_message():
 
 
 
-@app.route("/send_image")
+@app.route("/send-image")
 #TODO починить, тут нужно получать по HTTP картинку, так лучше. Пока что нужно локальный path до картинки
 #Можно добавить warning как в /send
 async def send_pic():
