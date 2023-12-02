@@ -50,7 +50,7 @@ with open("settings.txt", "r") as configfile:
 
 sdtest = False
 shutdcommand=False
-device_name = "FerrumAdapter_1.995"
+device_name = "FerrumAdapter_1.996"
 
 
 transcriptcolor="#16E2F5" # Цвет транскрипции (Наркоманский)
@@ -256,7 +256,7 @@ async def status():
             'errcode': 'Token_Invalid'}
         return response_data, 401
 
-@app.route("/send")
+@app.route("/send_message")
 async def send_message():
     global sendlist
 
@@ -265,8 +265,8 @@ async def send_message():
     color = request.args.get('color')
     if color == None:
         color = "#808080"
-    message = request.args.get('message')
-    room_id = request.args.get('room_id')
+    text = request.args.get('text')
+    chat_id = request.args.get('chat_id')
     warning=False # как сука оно работает?
     warning = request.args.get('warning')
 
@@ -292,7 +292,7 @@ async def send_message():
 
 
 
-@app.route("/send_pic")
+@app.route("/send_image")
 #TODO починить, тут нужно получать по HTTP картинку, так лучше. Пока что нужно локальный path до картинки
 #Можно добавить warning как в /send
 async def send_pic():
@@ -302,7 +302,7 @@ async def send_pic():
     #токен авторизации
     token = request.args.get('token')
     path = request.args.get('path')
-    room_id = request.args.get('room_id')
+    chat_id = request.args.get('room_id')
 
     #Проверка кучи условий на предмет хуйни
     if await checktoken(token):
