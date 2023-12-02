@@ -272,11 +272,11 @@ async def send_message():
 
     #Проверка кучи условий на предмет хуйни
     if await checktoken(token):
-        if not message == None and not chat-id == None and not warning==None:
+        if not text == None and not chat-id == None and not warning==None:
             response_data = {
                 'errcode': 'OK',
                 'status': 'Added_To_Tasker'}
-            sendlist.append(f"{message}%{chat-id}%{warning}%{color}")
+            sendlist.append(f"{text}%{chat-id}%{warning}%{color}")
 
             return response_data, 200
         else:
