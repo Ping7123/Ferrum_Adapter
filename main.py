@@ -272,11 +272,11 @@ async def send_message():
 
     #Проверка кучи условий на предмет хуйни
     if await checktoken(token):
-        if not message == None and not room_id == None and not warning==None:
+        if not message == None and not chat_id == None and not warning==None:
             response_data = {
                 'errcode': 'OK',
                 'status': 'Added_To_Tasker'}
-            sendlist.append(f"{message}%{room_id}%{warning}%{color}")
+            sendlist.append(f"{message}%{chat_id}%{warning}%{color}")
 
             return response_data, 200
         else:
@@ -302,15 +302,15 @@ async def send_pic():
     #токен авторизации
     token = request.args.get('token')
     path = request.args.get('path')
-    chat_id = request.args.get('room_id')
+    chat_id = request.args.get('chat_id')
 
     #Проверка кучи условий на предмет хуйни
     if await checktoken(token):
-        if not room_id == None and not path==None:
+        if not chat_id == None and not path==None:
             response_data = {
                 'errcode': 'OK',
                 'status': 'Added_To_Tasker'}
-            picsendlist.append(f"{room_id}%{path}")
+            picsendlist.append(f"{chat_id}%{path}")
 
             return response_data, 200
         else:
