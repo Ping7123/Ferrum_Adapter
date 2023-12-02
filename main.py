@@ -266,17 +266,17 @@ async def send_message():
     if color == None:
         color = "#808080"
     text = request.args.get('text')
-    chat_id = request.args.get('chat_id')
+    chat-id = request.args.get('chat-id')
     warning=False # как сука оно работает?
     warning = request.args.get('warning')
 
     #Проверка кучи условий на предмет хуйни
     if await checktoken(token):
-        if not message == None and not chat_id == None and not warning==None:
+        if not message == None and not chat-id == None and not warning==None:
             response_data = {
                 'errcode': 'OK',
                 'status': 'Added_To_Tasker'}
-            sendlist.append(f"{message}%{chat_id}%{warning}%{color}")
+            sendlist.append(f"{message}%{chat-id}%{warning}%{color}")
 
             return response_data, 200
         else:
@@ -302,15 +302,15 @@ async def send_pic():
     #токен авторизации
     token = request.args.get('token')
     path = request.args.get('path')
-    chat_id = request.args.get('chat_id')
+    chat-id = request.args.get('chat-id')
 
     #Проверка кучи условий на предмет хуйни
     if await checktoken(token):
-        if not chat_id == None and not path==None:
+        if not chat-id == None and not path==None:
             response_data = {
                 'errcode': 'OK',
                 'status': 'Added_To_Tasker'}
-            picsendlist.append(f"{chat_id}%{path}")
+            picsendlist.append(f"{chat-id}%{path}")
 
             return response_data, 200
         else:
