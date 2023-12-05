@@ -50,7 +50,7 @@ with open("settings.txt", "r") as configfile:
 
 sdtest = False
 shutdcommand=False
-device_name = "FerrumAdapter_1.996"
+device_name = "FerrumAdapter_1.997"
 
 
 transcriptcolor="#16E2F5" # Цвет транскрипции (Наркоманский)
@@ -256,7 +256,7 @@ async def status():
             'errcode': 'Token_Invalid'}
         return response_data, 401
 
-@app.route("/send-message")
+@app.route("/send_message")
 async def send_message():
     global sendlist
 
@@ -266,17 +266,17 @@ async def send_message():
     if color == None:
         color = "#808080"
     text = request.args.get('text')
-    chat-id = request.args.get('chat-id')
+    chat_id = request.args.get('chat-id')
     warning=False # как сука оно работает?
     warning = request.args.get('warning')
 
     #Проверка кучи условий на предмет хуйни
     if await checktoken(token):
-        if not text == None and not chat-id == None and not warning==None:
+        if not text == None and not chat_id == None and not warning==None:
             response_data = {
                 'errcode': 'OK',
                 'status': 'Added_To_Tasker'}
-            sendlist.append(f"{text}%{chat-id}%{warning}%{color}")
+            sendlist.append(f"{text}%{chat_id}%{warning}%{color}")
 
             return response_data, 200
         else:
@@ -292,7 +292,7 @@ async def send_message():
 
 
 
-@app.route("/send-image")
+@app.route("/send_image")
 #TODO починить, тут нужно получать по HTTP картинку, так лучше. Пока что нужно локальный path до картинки
 #Можно добавить warning как в /send
 async def send_pic():
@@ -301,16 +301,16 @@ async def send_pic():
 
     #токен авторизации
     token = request.args.get('token')
-    path = request.args.get('path')
-    chat-id = request.args.get('chat-id')
+    image_name = request.args.get('image-name')
+    chat_id = request.args.get('chat-id')
 
     #Проверка кучи условий на предмет хуйни
     if await checktoken(token):
-        if not chat-id == None and not path==None:
+        if not chat_id == None and not image_name==None:
             response_data = {
                 'errcode': 'OK',
                 'status': 'Added_To_Tasker'}
-            picsendlist.append(f"{chat-id}%{path}")
+            picsendlist.append(f"{chat_id}%/ferrum/images/{image_name}")
 
             return response_data, 200
         else:
