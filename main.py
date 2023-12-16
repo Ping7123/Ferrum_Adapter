@@ -724,7 +724,7 @@ async def localcmdproc(message, userid, roomid=None):
                 message=message.split(" ")
                 if len(message)>3:
                     if message[1].isnumeric() and int(message[1]) < limitsd and int(message[1]) > 0:
-                        if message[2] == "realistic" or message[2]=="anime" or message[2]=="nsfw":
+                        if message[2] == "realistic" or message[2]=="anime" or message[2]=="nsfw" or message[2]=="nsfw2":
                             style=message[2]
                             detail=message[1]
                             #rebuild
