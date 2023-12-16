@@ -50,7 +50,7 @@ with open("settings.txt", "r") as configfile:
 
 sdtest = False
 shutdcommand=False
-device_name = "FerrumAdapter_1.997"
+device_name = "FerrumAdapter_2.00"
 
 
 transcriptcolor="#16E2F5" # Цвет транскрипции (Наркоманский)
@@ -101,10 +101,11 @@ async def drawandsend(text, room, client, hd=1,style="realistic"):
             if hd == 4: await sendmessage(f"Новое экспериментальное разрешение. Тебе не лень ждать?", room, warning=True, color="#FF0000")
             await sendmessage(f"Пытаюсь нарисовать {text} \nДетализация: {detailtext}\nСтилистика: {style}", room, warning=True, color=sdcolor)
 
+            #modelstyle написан в webui stable diffusion
             if style == "nsfw": modelstyle = "lazymixRealAmateur_v30b.safetensors [71e14760e2]"
             if style == "realistic": modelstyle="realisticVisionV40_v40VAE.safetensors [e9d3cedc4b]" # пока что тут 2 модели. вставляем сюда свою анимешную и реалистичную.
             if style == "anime": modelstyle = "abyssorangemix3AOM3_aom3a1b.safetensors [5493a0ec49]" # если хотите поменять на другие по смыслу пройдитесь по коду и перепишите !help и !sd команды
-            if style == "uprm": modelstyle = "Stable Diffusion" , model_id: "uber-realistic-merge" # требуется доработка, скорее всего неработает
+            if style == "nsfw2": modelstyle = "uberRealisticPornMerge_urpmv13.safetensors [40f9701da0]" # Пофиксил и переименовал для понятности юзерам
 
             # setup ai img
             apisd = webuiapi.WebUIApi(host=sdip, port=sdport, sampler='DPM++ SDE Karras',steps=20)
@@ -679,7 +680,7 @@ async def experimentalcommandexec(message,userid,roomid=None):
                         limitsd=3
                         await sendmessage("[EX] sdlimit вкл", roomid, color="#00FF64")
                     else:
-                        limitsd=4
+                        limitsd=5
                         await sendmessage("[EX] sdlimit отключен (ОСТОРОЖНО)", roomid, color="#00FF64")
                 elif message[1]=="clear":
                     counter=0
@@ -736,11 +737,11 @@ async def localcmdproc(message, userid, roomid=None):
                                 request += ' '
                             asyncio.get_event_loop().create_task(drawandsend(text=request, room=roomid, client=client, hd=int(detail), style=style))
                         else:
-                            cmdresp = "Кажется ты что то не так написал (Не хватает аргументов)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime, realistic nsfw) (Запрос)"
+                            cmdresp = "Кажется ты что то не так написал (Не хватает аргументов)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime, realistic, nsfw, nsfw2) (Запрос)"
                     else:
-                        cmdresp="Кажется ты что то не так написал (Неверный уровень детализации)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime realistic nsfw) (Запрос)"
+                        cmdresp="Кажется ты что то не так написал (Неверный уровень детализации)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime realistic, nsfw, nsfw2) (Запрос)"
                 else:
-                    cmdresp = "Кажется ты что то не так написал (Неверный стиль)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime, realistic nsfw) (Запрос)"
+                    cmdresp = "Кажется ты что то не так написал (Неверный стиль)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime, realistic, nsfw, nsfw2) (Запрос)"
 
             elif message == "!lver":
                 cmdresp=f"Версия адаптера: {device_name}\nСигнатура файла адаптера: {signature}"
