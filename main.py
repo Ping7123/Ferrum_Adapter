@@ -92,14 +92,19 @@ async def drawandsend(text, room, client, hd=1,style="realistic"):
         if sdtest:
             if hd == 1: detailtext = "512x512"; hdenabled = False
             if hd == 2: detailtext = "1024x1024 (Нужно подождать)"
-            if hd == 3: detailtext = "1536x1536 (ЭКСПЕРИМЕНТАЛЬНО)"
-
-            if hd == 3: await sendmessage(f"Экспериментальное разрешение. Ты ждун?", room, warning=True, color="#FF0000")
+            if hd == 3: detailtext = "1536x1536 (Придется ждать ещё подольше)"
+            if hd == 4: detailtext = "2048x2048 (ЭКСПЕРИМЕНТАЛЬНО)"
+    
+            if hd == 3: await sendmessage(f"В бета-тесте. Может работать медленно", room, warning=True, color="#FF0000")
+            await sendmessage(f"Пытаюсь нарисовать {text} \nДетализация: {detailtext}\nСтилистика: {style}", room, warning=True, color=sdcolor)
+            
+            if hd == 4: await sendmessage(f"Новое экспериментальное разрешение. Тебе не лень ждать?", room, warning=True, color="#FF0000")
             await sendmessage(f"Пытаюсь нарисовать {text} \nДетализация: {detailtext}\nСтилистика: {style}", room, warning=True, color=sdcolor)
 
             if style == "nsfw": modelstyle = "lazymixRealAmateur_v30b.safetensors [71e14760e2]"
             if style == "realistic": modelstyle="realisticVisionV40_v40VAE.safetensors [e9d3cedc4b]" # пока что тут 2 модели. вставляем сюда свою анимешную и реалистичную.
             if style == "anime": modelstyle = "abyssorangemix3AOM3_aom3a1b.safetensors [5493a0ec49]" # если хотите поменять на другие по смыслу пройдитесь по коду и перепишите !help и !sd команды
+            if style == "uprm": modelstyle = "Stable Diffusion" , model_id: "uber-realistic-merge" # требуется доработка, скорее всего неработает
 
             # setup ai img
             apisd = webuiapi.WebUIApi(host=sdip, port=sdport, sampler='DPM++ SDE Karras',steps=20)
