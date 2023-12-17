@@ -50,7 +50,7 @@ with open("settings.txt", "r") as configfile:
 
 sdtest = False
 shutdcommand=False
-device_name = "FerrumAdapter_2.00"
+device_name = "FerrumAdapter_2.01"
 
 
 transcriptcolor="#16E2F5" # Цвет транскрипции (Наркоманский)
@@ -110,13 +110,13 @@ async def drawandsend(text, room, client, hd=1,style="realistic"):
             if style == "nsfw2": modelstyle = "uberRealisticPornMerge_urpmv13.safetensors [40f9701da0]" # Пофиксил и переименовал для понятности юзерам
 
             # setup ai img
-            apisd = webuiapi.WebUIApi(host=sdip, port=sdport, sampler='DPM++ SDE Karras',steps=20)
+            apisd = webuiapi.WebUIApi(host=sdip, port=sdport, sampler='DPM++ SDE',steps=25)
             options = {}
             options['sd_model_checkpoint'] = modelstyle
             apisd.set_options(options)
             # END setup ai img
 
-            resultpic = await apisd.txt2img(prompt=text, seed=1337, negative_prompt="ugly, out of frame",cfg_scale=7, use_async=True, enable_hr=hdenabled, hr_scale=hd)
+            resultpic = await apisd.txt2img(prompt=text, seed=1337, negative_prompt="ugly, out of frame",cfg_scale=2, use_async=True, enable_hr=hdenabled, hr_scale=hd)
             resultpic.image.save(f"{file}.png")
             await send_image(client, room, f"{file}.png")
             os.remove(f"{file}.png")
