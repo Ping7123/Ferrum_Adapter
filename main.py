@@ -95,11 +95,13 @@ async def drawandsend(text, room, client, hd=1,style="realistic"):
             if hd == 3: detailtext = "1536x1536 (Придется ждать ещё подольше)"
             if hd == 4: detailtext = "2048x2048 (ЭКСПЕРИМЕНТАЛЬНО)"
     
-            if hd == 3: await sendmessage(f"В бета-тесте. Может работать медленно", room, warning=True, color="#FF0000")
-            await sendmessage(f"Пытаюсь нарисовать {text} \nДетализация: {detailtext}\nСтилистика: {style}", room, warning=True, color=sdcolor)
+            if hd == 3: 
+                await sendmessage(f"В бета-тесте. Может работать медленно", room, warning=True, color="#FF0000")
+                await sendmessage(f"Пытаюсь нарисовать {text} \nДетализация: {detailtext}\nСтилистика: {style}", room, warning=True, color=sdcolor)
             
-            if hd == 4: await sendmessage(f"Новое экспериментальное разрешение. Тебе не лень ждать?", room, warning=True, color="#FF0000")
-            await sendmessage(f"Пытаюсь нарисовать {text} \nДетализация: {detailtext}\nСтилистика: {style}", room, warning=True, color=sdcolor)
+            if hd == 4: 
+                await sendmessage(f"Новое экспериментальное разрешение. Тебе не лень ждать?", room, warning=True, color="#FF0000")
+                await sendmessage(f"Пытаюсь нарисовать {text} \nДетализация: {detailtext}\nСтилистика: {style}", room, warning=True, color=sdcolor)
 
             #modelstyle написан в webui stable diffusion
             if style == "nsfw": modelstyle = "lazymixRealAmateur_v30b.safetensors [71e14760e2]"
