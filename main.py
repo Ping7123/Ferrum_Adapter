@@ -50,7 +50,7 @@ with open("settings.txt", "r") as configfile:
 
 sdtest = False
 shutdcommand=False
-device_name = "FerrumAdapter_1.996"
+device_name = "FerrumAdapter_2.01"
 
 
 transcriptcolor="#16E2F5" # Цвет транскрипции (Наркоманский)
@@ -92,23 +92,31 @@ async def drawandsend(text, room, client, hd=1,style="realistic"):
         if sdtest:
             if hd == 1: detailtext = "512x512"; hdenabled = False
             if hd == 2: detailtext = "1024x1024 (Нужно подождать)"
-            if hd == 3: detailtext = "1536x1536 (ЭКСПЕРИМЕНТАЛЬНО)"
+            if hd == 3: detailtext = "1536x1536 (Придется ждать ещё подольше)"
+            if hd == 4: detailtext = "2048x2048 (ЭКСПЕРИМЕНТАЛЬНО)"
+    
+            if hd == 3: 
+                await sendmessage(f"В бета-тесте. Может работать медленно", room, warning=True, color="#FF0000")
+                await sendmessage(f"Пытаюсь нарисовать {text} \nДетализация: {detailtext}\nСтилистика: {style}", room, warning=True, color=sdcolor)
+            
+            if hd == 4: 
+                await sendmessage(f"Новое экспериментальное разрешение. Тебе не лень ждать?", room, warning=True, color="#FF0000")
+                await sendmessage(f"Пытаюсь нарисовать {text} \nДетализация: {detailtext}\nСтилистика: {style}", room, warning=True, color=sdcolor)
 
-            if hd == 3: await sendmessage(f"Экспериментальное разрешение. Ты ждун?", room, warning=True, color="#FF0000")
-            await sendmessage(f"Пытаюсь нарисовать {text} \nДетализация: {detailtext}\nСтилистика: {style}", room, warning=True, color=sdcolor)
-
+            #modelstyle написан в webui stable diffusion
             if style == "nsfw": modelstyle = "lazymixRealAmateur_v30b.safetensors [71e14760e2]"
             if style == "realistic": modelstyle="realisticVisionV40_v40VAE.safetensors [e9d3cedc4b]" # пока что тут 2 модели. вставляем сюда свою анимешную и реалистичную.
             if style == "anime": modelstyle = "abyssorangemix3AOM3_aom3a1b.safetensors [5493a0ec49]" # если хотите поменять на другие по смыслу пройдитесь по коду и перепишите !help и !sd команды
+            if style == "nsfw2": modelstyle = "uberRealisticPornMerge_urpmv13.safetensors [40f9701da0]" # Пофиксил и переименовал для понятности юзерам
 
             # setup ai img
-            apisd = webuiapi.WebUIApi(host=sdip, port=sdport, sampler='DPM++ SDE Karras',steps=20)
+            apisd = webuiapi.WebUIApi(host=sdip, port=sdport, sampler='DPM++ SDE',steps=25)
             options = {}
             options['sd_model_checkpoint'] = modelstyle
             apisd.set_options(options)
             # END setup ai img
 
-            resultpic = await apisd.txt2img(prompt=text, seed=1337, negative_prompt="ugly, out of frame",cfg_scale=7, use_async=True, enable_hr=hdenabled, hr_scale=hd)
+            resultpic = await apisd.txt2img(prompt=text, seed=1337, negative_prompt="ugly, out of frame",cfg_scale=2, use_async=True, enable_hr=hdenabled, hr_scale=hd)
             resultpic.image.save(f"{file}.png")
             await send_image(client, room, f"{file}.png")
             os.remove(f"{file}.png")
@@ -301,16 +309,16 @@ async def send_pic():
 
     #токен авторизации
     token = request.args.get('token')
-    path = request.args.get('path')
     chat_id = request.args.get('chat-id')
 
     #Проверка кучи условий на предмет хуйни
     if await checktoken(token):
-        if not chat_id == None and not path==None:
+
+        if not chat_id == None and not image_name==None:
             response_data = {
                 'errcode': 'OK',
                 'status': 'Added_To_Tasker'}
-            picsendlist.append(f"{chat_id}%{path}")
+            picsendlist.append(f"{chat_id}%/ferrum/images/{image_name}")
 
             return response_data, 200
         else:
@@ -674,7 +682,7 @@ async def experimentalcommandexec(message,userid,roomid=None):
                         limitsd=3
                         await sendmessage("[EX] sdlimit вкл", roomid, color="#00FF64")
                     else:
-                        limitsd=4
+                        limitsd=5
                         await sendmessage("[EX] sdlimit отключен (ОСТОРОЖНО)", roomid, color="#00FF64")
                 elif message[1]=="clear":
                     counter=0
@@ -718,7 +726,7 @@ async def localcmdproc(message, userid, roomid=None):
                 message=message.split(" ")
                 if len(message)>3:
                     if message[1].isnumeric() and int(message[1]) < limitsd and int(message[1]) > 0:
-                        if message[2] == "realistic" or message[2]=="anime" or message[2]=="nsfw":
+                        if message[2] == "realistic" or message[2]=="anime" or message[2]=="nsfw" or message[2]=="nsfw2":
                             style=message[2]
                             detail=message[1]
                             #rebuild
@@ -731,11 +739,11 @@ async def localcmdproc(message, userid, roomid=None):
                                 request += ' '
                             asyncio.get_event_loop().create_task(drawandsend(text=request, room=roomid, client=client, hd=int(detail), style=style))
                         else:
-                            cmdresp = "Кажется ты что то не так написал (Не хватает аргументов)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime, realistic nsfw) (Запрос)"
+                            cmdresp = "Кажется ты что то не так написал (Не хватает аргументов)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime, realistic, nsfw, nsfw2) (Запрос)"
                     else:
-                        cmdresp="Кажется ты что то не так написал (Неверный уровень детализации)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime realistic nsfw) (Запрос)"
+                        cmdresp="Кажется ты что то не так написал (Неверный уровень детализации)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime realistic, nsfw, nsfw2) (Запрос)"
                 else:
-                    cmdresp = "Кажется ты что то не так написал (Неверный стиль)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime, realistic nsfw) (Запрос)"
+                    cmdresp = "Кажется ты что то не так написал (Неверный стиль)\nФормат: !sd (Детализация от 1 до 2) (Стилистика: anime, realistic, nsfw, nsfw2) (Запрос)"
 
             elif message == "!lver":
                 cmdresp=f"Версия адаптера: {device_name}\nСигнатура файла адаптера: {signature}"
