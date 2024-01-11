@@ -309,11 +309,11 @@ async def send_pic():
 
     #токен авторизации
     token = request.args.get('token')
-    image_name = request.args.get('image-name')
     chat_id = request.args.get('chat-id')
 
     #Проверка кучи условий на предмет хуйни
     if await checktoken(token):
+
         if not chat_id == None and not image_name==None:
             response_data = {
                 'errcode': 'OK',
@@ -446,8 +446,8 @@ async def audiocallback(room: MatrixRoom, event: RoomMessageMedia) -> None:
             os.remove("voice.ogg")
             os.remove("voice.wav")
             print("Создал транскрипцию")
-        except:
-            print("Ошибка транскрипции") # ебучие картинки не обрабатывать!
+        except Exception as err:
+            print(f"Ошибка транскрипции {err}") # ебучие картинки не обрабатывать!
 
 
 async def checkpoint():
@@ -476,7 +476,7 @@ async def messageprepare(question, displayusername, responseuserid, userid, resp
             servicemessages.append(f"{event.event_id}%{room.room_id}")
             #В плкйсхолдере не displayusername
         if httpchatenabled:
-            response = await sendtocore(question, userid, room.room_id, answer, room.user_name(event.sender), event.event_id, "DISPNAME_PLACEHOLDER_RESP", responseuserid, "EventIdReplyPlaceholder")
+            response = await sendtocore(question, userid, room.room_id, answer, room.user_name(event.sender), event.event_id, responseuserid, responseuserid, "EventIdReplyPlaceholder")
             if not response == None:
                 if response[:3] not in ['err', 'wrn', 'log', 'dbg']:
                         await sendmessage(response, room.room_id,warning=False)
@@ -500,7 +500,7 @@ async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
                 question = responsebuilder[0]
             else:
                 await reporterror("Неопознаный массив с ответом/вопросом") #пофиксить
-                question="None"
+                question=None
             displayusername=room.user_name(event.sender)
 
             #Выдернуть из хуйни юзернейм на который отвечают
@@ -509,7 +509,7 @@ async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
                 responseuserid=responseuserid[0]
                 responseuserid=re.search(r"<(.*?)>", responseuserid).group(1)
             except:
-                responseuserid="None"
+                responseuserid=None
             userid=event.source["sender"]
 
             #Проверяем локальную команду, иначе в ядрою ПЕРЕПИСАТ ПАРАШУ
@@ -519,7 +519,7 @@ async def message_callback(room: MatrixRoom, event: RoomMessageText) -> None:
                 servicemessages.append(f"{event.event_id}%{room.room_id}")
                 await sendmessage(cmdresp,room.room_id,False)
             else:
-                await messageprepare(question, displayusername, responseuserid, userid, responsebuilder,room,event,client)
+                await messageprepare(question, displayusername, responseuserid, userid, responsebuilder, room, event, client)
 
 
 
